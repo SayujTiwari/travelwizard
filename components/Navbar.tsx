@@ -1,7 +1,11 @@
+"use client";
+
+import { login } from "@/lib/auth-actions";
 import Link from "next/link";
 import Image from "next/image";
+import { Session } from "next-auth";
 
-export default function Navbar() { 
+export default function Navbar({session}: {session: Session | null}) { 
     return (
         <nav className="bg-white shadow-md py-4 border-b border-gray-200">
             {" "}
@@ -23,7 +27,7 @@ export default function Navbar() {
 
             <button
               className="flex items-center justify-center bg-gray-800 hover:bg-gray-900 text-white p-2 rounded-sm cursor-pointer"
-            //   onClick={login}
+              onClick={login}
             >
               Sign In
               <svg
