@@ -1,6 +1,6 @@
 "use client";
 
-import { login } from "@/lib/auth-actions";
+import { login, logout } from "@/lib/auth-actions";
 import Link from "next/link";
 import Image from "next/image";
 import { Session } from "next-auth";
@@ -25,6 +25,13 @@ export default function Navbar({session}: {session: Session | null}) {
                     <Link href={"/globe"} className="text-slate-900 hover:text-sky-500">
                         Globe
                     </Link>
+
+                                <button
+              className="flex items-center justify-center bg-gray-800 hover:bg-gray-900 text-white p-2 rounded-sm cursor-pointer"
+              onClick={logout}
+            >
+              Sign Out
+            </button>
                     </>
                 ) : (
 
