@@ -7,8 +7,8 @@ import Link from "next/link";
 import { Button } from "./ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { useState } from "react";
-// import Map from "@/components/map";
-// import SortableItinerary from "./sortable-itinerary";
+import Map from "@/components/map";
+import SortableItinerary from "./sortable-itinerary";
 
 export type TripWithLocation = Trip & {
   locations: Location[];
@@ -108,7 +108,7 @@ export default function TripDetailClient({ trip }: TripDetailClientProps) {
                 </div>
               </div>
               <div className="h-72 rounded-lg overflow-hidden shadow">
-                {/* <Map itineraries={trip.locations} /> */}
+                <Map itineraries={trip.locations} />
               </div>
               {trip.locations.length === 0 && (
                 <div className="text-center p-4">
@@ -135,7 +135,7 @@ export default function TripDetailClient({ trip }: TripDetailClientProps) {
               <h2 className="text-2xl font-semibold"> Full Itinerary</h2>
             </div>
 
-            {/* {trip.locations.length === 0 ? (
+            {trip.locations.length === 0 ? (
               <div className="text-center p-4">
                 <p>Add locations to see them on the itinerary.</p>
                 <Link href={`/trips/${trip.id}/itinerary/new`}>
@@ -146,13 +146,13 @@ export default function TripDetailClient({ trip }: TripDetailClientProps) {
                 </Link>
               </div>
             ) : (
-            //   <SortableItinerary locations={trip.locations} tripId={trip.id} />
-            )} */}
+              <SortableItinerary locations={trip.locations} tripId={trip.id} />
+            )}
           </TabsContent>
 
           <TabsContent value="map" className="space-y-6">
             <div className="h-72 rounded-lg overflow-hidden shadow">
-              {/* <Map itineraries={trip.locations} /> */}
+              <Map itineraries={trip.locations} />
             </div>
             {trip.locations.length === 0 && (
               <div className="text-center p-4">
