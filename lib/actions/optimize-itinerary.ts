@@ -20,7 +20,8 @@ export type OptimizeItineraryResult =
     };
 
 export async function optimizeItinerary(
-  tripId: string
+  tripId: string,
+  dayIndex: number
 ): Promise<OptimizeItineraryResult> {
   const session = await auth();
   const userId = session?.user?.id;
@@ -29,10 +30,15 @@ export async function optimizeItinerary(
     return { ok: false, error: "Please sign in to optimize this itinerary." };
   }
 
+  if (!Number.isInteger(dayIndex) || dayIndex < 0) {
+    return { ok: false, error: "Select a valid trip day to optimize." };
+  }
+
   const trip = await prisma.trip.findFirst({
     where: { id: tripId, userId },
     select: {
       locations: {
+        where: { dayIndex },
         orderBy: { order: "asc" },
         select: { id: true, lat: true, lng: true },
       },
@@ -47,7 +53,7 @@ export async function optimizeItinerary(
     return {
       ok: false,
       error:
-        "Add at least four stops to optimize while keeping the first and last fixed.",
+        "Add at least four stops to this day to optimize while keeping the first and last fixed.",
     };
   }
 

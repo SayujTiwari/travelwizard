@@ -1,6 +1,7 @@
 "use server";
 
 import { auth } from "@/auth";
+import { getTripDayCount } from "@/lib/date-format";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -35,22 +36,54 @@ export async function updateTrip(tripId: string, formData: FormData) {
 
   const trip = await prisma.trip.findFirst({
     where: { id: tripId, userId },
-    select: { id: true },
+    select: {
+      id: true,
+      locations: {
+        orderBy: { order: "asc" },
+        select: { id: true, dayIndex: true },
+      },
+    },
   });
 
   if (!trip) {
     throw new Error("Trip not found");
   }
 
-  await prisma.trip.update({
-    where: { id: trip.id },
-    data: {
-      title: title.slice(0, 100),
-      description: description.slice(0, 2000),
-      startDate,
-      endDate,
-    },
-  });
+  const dayCount = getTripDayCount(startDate, endDate);
+  const unscheduledCount = trip.locations.filter(
+    ({ dayIndex }) => dayIndex === null
+  ).length;
+  const locationsOutsideNewDates = trip.locations.filter(
+    ({ dayIndex }) => dayIndex !== null && dayIndex >= dayCount
+  );
+
+  await prisma.$transaction([
+    prisma.trip.update({
+      where: { id: trip.id },
+      data: {
+        title: title.slice(0, 100),
+        description: description.slice(0, 2000),
+        startDate,
+        endDate,
+      },
+    }),
+    ...locationsOutsideNewDates.map(({ id }, index) =>
+      prisma.location.update({
+        where: { id },
+        data: {
+          dayIndex: null,
+          order: unscheduledCount + index,
+        },
+      })
+    ),
+    prisma.budgetItem.updateMany({
+      where: {
+        budget: { tripId: trip.id },
+        dayIndex: { gte: dayCount },
+      },
+      data: { dayIndex: null },
+    }),
+  ]);
 
   revalidatePath(`/trips/${tripId}`);
   revalidatePath("/trips");

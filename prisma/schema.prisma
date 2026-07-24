@@ -73,6 +73,7 @@ model Trip {
   userId String
 
   locations Location[]
+  budget TripBudget?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -85,6 +86,54 @@ model Location {
   lng Float
   trip Trip @relation(fields: [tripId], references: [id] )
   tripId String
+  dayIndex Int?
   order Int @default(0)
   createdAt DateTime @default(now())
+  budgetItem BudgetItem?
+
+  @@index([tripId, dayIndex, order])
+}
+
+model TripBudget {
+  id String @id @default(cuid())
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  tripId String @unique
+  totalAmount Int
+  currency String
+  travelerCount Int @default(1)
+  reserveAmount Int @default(0)
+  allocations BudgetAllocation[]
+  items BudgetItem[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model BudgetAllocation {
+  id String @id @default(cuid())
+  budget TripBudget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  budgetId String
+  category String
+  amount Int
+
+  @@unique([budgetId, category])
+}
+
+model BudgetItem {
+  id String @id @default(cuid())
+  budget TripBudget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  budgetId String
+  name String
+  category String
+  plannedAmount Int
+  actualAmount Int?
+  dayIndex Int?
+  notes String?
+  url String?
+  location Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  locationId String? @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([budgetId, category])
+  @@index([budgetId, dayIndex])
 }

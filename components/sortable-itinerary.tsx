@@ -3,6 +3,7 @@ import { optimizeItinerary } from "@/lib/actions/optimize-itinerary";
 import type { OptimizeItineraryResult } from "@/lib/actions/optimize-itinerary";
 import { reorderItinerary } from "@/lib/actions/reorder-itineraty";
 import { deleteLocation } from "@/lib/actions/delete-location";
+import { scheduleLocation } from "@/lib/actions/schedule-location";
 import {
   DndContext,
   closestCenter,
@@ -29,12 +30,15 @@ import {
   Sparkles,
   Trash2,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 import { Button } from "./ui/button";
 
 interface SortableItineraryProps {
   locations: Location[];
   tripId: string;
+  dayIndex: number | null;
+  dayOptions: Array<{ label: string; value: string }>;
 }
 
 type OptimizationPreview = Extract<OptimizeItineraryResult, { ok: true }>;
@@ -56,12 +60,18 @@ function SortableItem({
   position,
   isFinal,
   isDeleting,
+  isMoving,
+  dayOptions,
+  onMove,
   onDelete,
 }: {
   item: Location;
   position: number;
   isFinal: boolean;
   isDeleting: boolean;
+  isMoving: boolean;
+  dayOptions: Array<{ label: string; value: string }>;
+  onMove: (targetDayIndex: number | null) => void;
   onDelete: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } =
@@ -99,19 +109,43 @@ function SortableItem({
           </p>
         </div>
       </div>
-      <button
-        type="button"
-        onClick={onDelete}
-        disabled={isDeleting}
-        aria-label={`Delete ${item.locationTitle}`}
-        className="rounded-md p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 disabled:opacity-50"
-      >
-        {isDeleting ? (
-          <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
-        ) : (
-          <Trash2 className="h-4 w-4" aria-hidden="true" />
-        )}
-      </button>
+      <div className="flex shrink-0 items-center gap-2">
+        <label htmlFor={`schedule-${item.id}`} className="sr-only">
+          Move {item.locationTitle} to another day
+        </label>
+        <select
+          id={`schedule-${item.id}`}
+          value={item.dayIndex === null ? "unscheduled" : String(item.dayIndex)}
+          onChange={(event) =>
+            onMove(
+              event.target.value === "unscheduled"
+                ? null
+                : Number(event.target.value)
+            )
+          }
+          disabled={isMoving || isDeleting}
+          className="max-w-32 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-600 focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
+        >
+          {dayOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          onClick={onDelete}
+          disabled={isDeleting || isMoving}
+          aria-label={`Delete ${item.locationTitle}`}
+          className="rounded-md p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 disabled:opacity-50"
+        >
+          {isDeleting ? (
+            <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
+          ) : (
+            <Trash2 className="h-4 w-4" aria-hidden="true" />
+          )}
+        </button>
+      </div>
     </div>
   );
 }
@@ -119,8 +153,11 @@ function SortableItem({
 export default function SortableItinerary({
   locations,
   tripId,
+  dayIndex,
+  dayOptions,
 }: SortableItineraryProps) {
   const id = useId();
+  const router = useRouter();
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -134,6 +171,7 @@ export default function SortableItinerary({
   const [deletingLocationId, setDeletingLocationId] = useState<string | null>(
     null
   );
+  const [movingLocationId, setMovingLocationId] = useState<string | null>(null);
   const [message, setMessage] = useState<{
     tone: "success" | "error";
     text: string;
@@ -159,7 +197,8 @@ export default function SortableItinerary({
       try {
         await reorderItinerary(
           tripId,
-          newLocationsOrder.map((item) => item.id)
+          newLocationsOrder.map((item) => item.id),
+          dayIndex
         );
       } catch {
         setLocalLocation(localLocation);
@@ -177,7 +216,11 @@ export default function SortableItinerary({
     setMessage(null);
 
     try {
-      const result = await optimizeItinerary(tripId);
+      if (dayIndex === null) {
+        return;
+      }
+
+      const result = await optimizeItinerary(tripId, dayIndex);
 
       if (!result.ok) {
         setMessage({ tone: "error", text: result.error });
@@ -212,7 +255,7 @@ export default function SortableItinerary({
     setMessage(null);
 
     try {
-      await reorderItinerary(tripId, preview.orderedLocationIds);
+      await reorderItinerary(tripId, preview.orderedLocationIds, dayIndex);
       setLocalLocation(
         optimizedLocations.map((location, order) => ({ ...location, order }))
       );
@@ -231,7 +274,37 @@ export default function SortableItinerary({
     }
   };
 
-  const canOptimize = localLocation.length >= 4;
+  const canOptimize = dayIndex !== null && localLocation.length >= 4;
+
+  const handleMoveLocation = async (
+    location: Location,
+    targetDayIndex: number | null
+  ) => {
+    if (targetDayIndex === location.dayIndex) {
+      return;
+    }
+
+    setMovingLocationId(location.id);
+    setMessage(null);
+    setPreview(null);
+
+    try {
+      await scheduleLocation(tripId, location.id, targetDayIndex);
+      setLocalLocation((current) =>
+        current
+          .filter(({ id: locationId }) => locationId !== location.id)
+          .map((item, order) => ({ ...item, order }))
+      );
+      router.refresh();
+    } catch {
+      setMessage({
+        tone: "error",
+        text: "The destination could not be moved. Please try again.",
+      });
+    } finally {
+      setMovingLocationId(null);
+    }
+  };
 
   const handleDeleteLocation = async (location: Location) => {
     if (
@@ -269,44 +342,57 @@ export default function SortableItinerary({
 
   return (
     <div className="space-y-5">
-      <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="flex items-center gap-2 font-semibold text-gray-900">
-              <Route className="h-5 w-5 text-blue-600" aria-hidden="true" />
-              Optimize driving route
-            </div>
-            <p className="mt-1 text-sm text-gray-600">
-              Keep your first and last stops fixed while finding a faster order
-              for the stops between them.
-            </p>
-          </div>
-          <Button
-            type="button"
-            onClick={handleOptimize}
-            disabled={!canOptimize || isOptimizing || isSaving}
-            className="shrink-0 bg-blue-600 hover:bg-blue-700"
-          >
-            {isOptimizing ? (
-              <>
-                <LoaderCircle className="animate-spin" aria-hidden="true" />
-                Calculating
-              </>
-            ) : (
-              <>
-                <Sparkles aria-hidden="true" />
-                Optimize route
-              </>
-            )}
-          </Button>
-        </div>
-
-        {!canOptimize && (
-          <p className="mt-3 text-sm text-gray-500">
-            Add at least four stops to optimize a route with fixed endpoints.
+      {dayIndex === null ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
+          <p className="font-semibold text-amber-900">
+            Assign these destinations to a trip day
           </p>
-        )}
-      </div>
+          <p className="mt-1 text-sm text-amber-800">
+            Use the day menu beside each destination. Route optimization becomes
+            available after a destination is scheduled.
+          </p>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="flex items-center gap-2 font-semibold text-gray-900">
+                <Route className="h-5 w-5 text-blue-600" aria-hidden="true" />
+                Optimize this day
+              </div>
+              <p className="mt-1 text-sm text-gray-600">
+                Keep your first and last stops fixed while finding a faster
+                order for the stops between them.
+              </p>
+            </div>
+            <Button
+              type="button"
+              onClick={handleOptimize}
+              disabled={!canOptimize || isOptimizing || isSaving}
+              className="shrink-0 bg-blue-600 hover:bg-blue-700"
+            >
+              {isOptimizing ? (
+                <>
+                  <LoaderCircle className="animate-spin" aria-hidden="true" />
+                  Calculating
+                </>
+              ) : (
+                <>
+                  <Sparkles aria-hidden="true" />
+                  Optimize route
+                </>
+              )}
+            </Button>
+          </div>
+
+          {!canOptimize && (
+            <p className="mt-3 text-sm text-gray-500">
+              Add at least four stops to this day to optimize a route with fixed
+              endpoints.
+            </p>
+          )}
+        </div>
+      )}
 
       {message && (
         <div
@@ -456,6 +542,11 @@ export default function SortableItinerary({
                   localLocation.length > 1
                 }
                 isDeleting={deletingLocationId === item.id}
+                isMoving={movingLocationId === item.id}
+                dayOptions={dayOptions}
+                onMove={(targetDayIndex) =>
+                  handleMoveLocation(item, targetDayIndex)
+                }
                 onDelete={() => handleDeleteLocation(item)}
               />
             ))}

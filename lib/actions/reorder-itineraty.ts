@@ -4,7 +4,11 @@ import { auth } from "@/auth";
 import { prisma } from "../prisma";
 import { revalidatePath } from "next/cache";
 
-export async function reorderItinerary(tripId: string, newOrder: string[]) {
+export async function reorderItinerary(
+  tripId: string,
+  newOrder: string[],
+  dayIndex: number | null
+) {
   const session = await auth();
   const userId = session?.user?.id;
 
@@ -12,10 +16,18 @@ export async function reorderItinerary(tripId: string, newOrder: string[]) {
     throw new Error("Not authenticated");
   }
 
+  if (
+    dayIndex !== null &&
+    (!Number.isInteger(dayIndex) || dayIndex < 0)
+  ) {
+    throw new Error("Invalid trip day");
+  }
+
   const trip = await prisma.trip.findFirst({
     where: { id: tripId, userId },
     select: {
       locations: {
+        where: { dayIndex },
         select: { id: true },
       },
     },

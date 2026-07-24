@@ -17,17 +17,22 @@ export async function deleteLocation(tripId: string, locationId: string) {
     select: {
       locations: {
         orderBy: { order: "asc" },
-        select: { id: true },
+        select: { id: true, dayIndex: true },
       },
     },
   });
 
-  if (!trip || !trip.locations.some(({ id }) => id === locationId)) {
+  const location = trip?.locations.find(({ id }) => id === locationId);
+
+  if (!trip || !location) {
     throw new Error("Location not found");
   }
 
   const remainingIds = trip.locations
-    .filter(({ id }) => id !== locationId)
+    .filter(
+      ({ id, dayIndex }) =>
+        id !== locationId && dayIndex === location.dayIndex
+    )
     .map(({ id }) => id);
 
   await prisma.$transaction([

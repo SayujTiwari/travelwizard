@@ -10,9 +10,10 @@ import {
 
 interface MapProps {
   itineraries: Location[];
+  showRoute?: boolean;
 }
 
-export default function Map({ itineraries }: MapProps) {
+export default function Map({ itineraries, showRoute = true }: MapProps) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: apiKey,
@@ -66,7 +67,7 @@ export default function Map({ itineraries }: MapProps) {
         fullscreenControl: false,
       }}
     >
-      {itineraries.length > 1 && (
+      {showRoute && itineraries.length > 1 && (
         <Polyline
           path={itineraries.map(({ lat, lng }) => ({ lat, lng }))}
           options={{
