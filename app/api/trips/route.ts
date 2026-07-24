@@ -1,19 +1,28 @@
 import { auth } from "@/auth";
 import { getCountryFromCoordinates } from "@/lib/actions/geocode";
 import { prisma } from "@/lib/prisma";
+import { isAuthConfigured } from "@/lib/config";
 import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
+    if (!isAuthConfigured()) {
+      return new NextResponse("Authentication is not configured", {
+        status: 503,
+      });
+    }
+
     const session = await auth();
-    if (!session) {
+    const userId = session?.user?.id;
+
+    if (!userId) {
       return new NextResponse("Not authenticated", { status: 401 });
     }
 
     const locations = await prisma.location.findMany({
       where: {
         trip: {
-          userId: session.user?.id,
+          userId,
         },
       },
       select: {
@@ -42,8 +51,7 @@ export async function GET() {
     );
 
     return NextResponse.json(transformedLocations);
-  } catch (err) {
-    console.log(err);
+  } catch {
     return new NextResponse("Internal Error", { status: 500 });
   }
 }

@@ -3,57 +3,80 @@
 import { login, logout } from "@/lib/auth-actions";
 import Link from "next/link";
 import Image from "next/image";
-import { Session } from "next-auth";
+import type { Session } from "next-auth";
+import { Globe2, LogIn, LogOut, Map } from "lucide-react";
 
-// session --> true or false user is auth or not
-export default function Navbar({session}: {session: Session | null}) { 
-    return (
-        <nav className="bg-white shadow-md py-4 border-b border-gray-200">
-            {" "}
-            <div className="container mx-auto flex justify-between items-center px-6 lg:px-8">
-                <Link href={"/"} className="flex items-center">
-                    <Image src = {"/travelWizlogo.png"} alt="logo" width={50} height = {50}/>
-                    <span className="text-2xl font-bold text-gray-800"> Travel Wizard </span>
-                </Link>
+export default function Navbar({
+  session,
+  authConfigured,
+}: {
+  session: Session | null;
+  authConfigured: boolean;
+}) {
+  return (
+    <nav className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur">
+      <div className="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
+        <Link
+          href="/"
+          className="flex items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
+        >
+          <Image
+            src="/travelWizlogo.png"
+            alt=""
+            width={40}
+            height={40}
+            className="h-10 w-10 object-contain"
+          />
+          <span className="text-lg font-black tracking-tight text-slate-900 sm:text-xl">
+            Travel Wizard
+          </span>
+        </Link>
 
-                <div className="flex items-center space-x-4">
-                    {session ? (
-                    <>
-                    <Link href={"/trips"} className="text-slate-900 hover:text-sky-500">
-                        My Trips
-                    </Link>
-                    <Link href={"/globe"} className="text-slate-900 hover:text-sky-500">
-                        Globe
-                    </Link>
-
-                                <button
-              className="flex items-center justify-center bg-gray-800 hover:bg-gray-900 text-white p-2 rounded-sm cursor-pointer"
-              onClick={logout}
-            >
-              Sign Out
-            </button>
-                    </>
-                ) : (
-
-            <button
-              className="flex items-center justify-center bg-gray-800 hover:bg-gray-900 text-white p-2 rounded-sm cursor-pointer"
-              onClick={login}
-            >
-              Sign In
-              <svg
-                className="w-6 h-6 ml-2"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="currentColor"
+        <div className="flex items-center gap-1 sm:gap-2">
+          {session ? (
+            <>
+              <Link
+                href="/trips"
+                className="inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 hover:text-slate-950"
               >
-                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58 0-.29-.01-1.04-.02-2.04-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.74.08-.74 1.2.09 1.83 1.24 1.83 1.24 1.07 1.84 2.81 1.31 3.5 1 .11-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.12-.3-.54-1.52.12-3.18 0 0 1-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.05.14 3.01.41 2.29-1.55 3.29-1.23 3.29-1.23.66 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.8 5.63-5.48 5.93.43.37.81 1.1.81 2.23 0 1.61-.02 2.91-.02 3.31 0 .32.22.69.83.57C20.56 21.8 24 17.3 24 12c0-6.63-5.37-12-12-12z" />
-              </svg>
+                <Map className="h-4 w-4" aria-hidden="true" />
+                <span className="hidden sm:inline">My Trips</span>
+              </Link>
+              <Link
+                href="/globe"
+                className="inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 hover:text-slate-950"
+              >
+                <Globe2 className="h-4 w-4" aria-hidden="true" />
+                <span className="hidden sm:inline">Globe</span>
+              </Link>
+              <button
+                type="button"
+                className="inline-flex h-9 items-center gap-2 rounded-md bg-slate-900 px-3 text-sm font-medium text-white transition-colors hover:bg-slate-800"
+                onClick={() => logout()}
+              >
+                <LogOut className="h-4 w-4" aria-hidden="true" />
+                <span className="hidden sm:inline">Sign out</span>
+              </button>
+            </>
+          ) : authConfigured ? (
+            <button
+              type="button"
+              className="inline-flex h-9 items-center gap-2 rounded-md bg-slate-900 px-4 text-sm font-medium text-white transition-colors hover:bg-slate-800"
+              onClick={() => login()}
+            >
+              <LogIn className="h-4 w-4" aria-hidden="true" />
+              Sign in
             </button>
-                )}
+          ) : (
+            <span
+              className="rounded-md bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 sm:text-sm"
+              title="Add the required values from .env.example to enable sign-in"
+            >
+              Setup required
+            </span>
+          )}
         </div>
-    </div>
-</nav>
-)}   
-
-
-            
+      </div>
+    </nav>
+  );
+}

@@ -2,13 +2,15 @@
 
 import { Location, Trip } from "@/app/generated/prisma";
 import Image from "next/image";
-import { Calendar, MapPin, Plus } from "lucide-react";
+import { Calendar, MapPin, Pencil, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "./ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Map from "@/components/map";
 import SortableItinerary from "./sortable-itinerary";
+import { deleteTrip } from "@/lib/actions/delete-trip";
+import { formatTripDate } from "@/lib/date-format";
 
 export type TripWithLocation = Trip & {
   locations: Location[];
@@ -20,6 +22,19 @@ interface TripDetailClientProps {
 
 export default function TripDetailClient({ trip }: TripDetailClientProps) {
   const [activeTab, setActiveTab] = useState("overview");
+  const [isDeleting, startDeleteTransition] = useTransition();
+
+  const handleDeleteTrip = () => {
+    if (
+      !window.confirm(
+        `Delete “${trip.title}” and all of its destinations? This cannot be undone.`
+      )
+    ) {
+      return;
+    }
+
+    startDeleteTransition(() => deleteTrip(trip.id));
+  };
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-8">
@@ -46,18 +61,32 @@ export default function TripDetailClient({ trip }: TripDetailClientProps) {
           <div className="flex items-center text-gray-500 mt-2">
             <Calendar className="h-5 w-5 mr-2" />
             <span className="text-lg">
-              {trip.startDate.toLocaleDateString()} -{" "}
-              {trip.endDate.toLocaleDateString()}
+              {formatTripDate(trip.startDate)} - {formatTripDate(trip.endDate)}
             </span>
           </div>
         </div>
-        <div className="mt-4 md:mt-0">
+        <div className="mt-4 flex flex-wrap gap-2 md:mt-0">
+          <Link href={`/trips/${trip.id}/edit`}>
+            <Button variant="outline">
+              <Pencil aria-hidden="true" />
+              Edit trip
+            </Button>
+          </Link>
           <Link href={`/trips/${trip.id}/itinerary/new`}>
             <Button>
-              {" "}
               <Plus className="mr-2 h-5 w-5" /> Add Location
             </Button>
           </Link>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleDeleteTrip}
+            disabled={isDeleting}
+            className="text-red-700 hover:bg-red-50 hover:text-red-800"
+          >
+            <Trash2 aria-hidden="true" />
+            {isDeleting ? "Deleting..." : "Delete trip"}
+          </Button>
         </div>
       </div>
       <div className="bg-white p-6 shadow rounded-lg">
@@ -84,8 +113,8 @@ export default function TripDetailClient({ trip }: TripDetailClientProps) {
                     <div>
                       <p className="font-medium text-gray-700"> Dates</p>
                       <p className="text-sm text-gray-500">
-                        {trip.startDate.toLocaleDateString()} -{" "}
-                        {trip.endDate.toLocaleDateString()}
+                        {formatTripDate(trip.startDate)} -{" "}
+                        {formatTripDate(trip.endDate)}
                         <br />
                         {`${Math.round(
                           (trip.endDate.getTime() - trip.startDate.getTime()) /

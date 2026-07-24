@@ -1,36 +1,85 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Travel Wizard
 
-## Getting Started
+Travel Wizard is a full-stack travel planner for creating trips, organizing
+destinations, visualizing an itinerary, and optimizing the driving order between
+fixed start and end points.
 
-First, run the development server:
+## Features
+
+- GitHub sign-in and user-owned trips
+- Trip dates, descriptions, and optional cover images
+- Address search and geocoded destinations
+- Ordered itinerary with drag-and-drop controls
+- Google Routes travel-time matrix and fixed-endpoint 2-opt optimization
+- Before/after travel-time comparison with an explicit save step
+- Numbered map markers and an itinerary path
+- Visited-country travel globe
+
+## Local setup
+
+Requirements:
+
+- Node.js 20 or newer
+- PostgreSQL
+- A GitHub OAuth app
+- A Google Maps Platform project
+- An UploadThing account if trip image uploads are needed
+
+Install dependencies and create your local environment file:
+
+```bash
+npm install
+cp .env.example .env.local
+```
+
+Fill in `.env.local`.
+
+For GitHub OAuth, use this local callback URL:
+
+```text
+http://localhost:3000/api/auth/callback/github
+```
+
+Enable these Google Maps Platform APIs:
+
+- Maps JavaScript API for the browser map
+- Geocoding API for destination lookup and visited countries
+- Routes API for travel-time matrices and route optimization
+
+Apply the database migrations:
+
+```bash
+npm run db:migrate
+```
+
+Start the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Production
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Set the same environment variables on the hosting platform, change
+`AUTH_URL` and `NEXT_PUBLIC_APP_URL` to the production HTTPS URL, and add the
+production GitHub OAuth callback.
 
-## Learn More
+Apply migrations and build:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run db:deploy
+npm run build
+npm run start
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+`npm run start` serves the already-built production application; run
+`npm run build` first whenever the source changes.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Route optimization
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The optimizer requests a driving-time matrix from Google Routes and runs a
+2-opt heuristic over the intermediate stops. The first and last destinations
+remain fixed. Google currently permits a maximum matrix of 625 elements, so
+Travel Wizard supports up to 25 stops per optimization request.

@@ -1,20 +1,54 @@
 import { auth } from "@/auth";
+import AuthButton from "@/components/auth-button";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { prisma } from "@/lib/prisma";
+import { isAuthConfigured } from "@/lib/config";
+import { formatTripDate } from "@/lib/date-format";
 import Link from "next/link";
 
 export default async function TripsPage() {
-  const session = await auth();
+  const authConfigured = isAuthConfigured();
+  const session = authConfigured ? await auth() : null;
+
+  if (!session?.user?.id) {
+    return (
+      <main className="flex min-h-[calc(100vh-5rem)] items-center justify-center bg-slate-50 px-6">
+        <Card className="w-full max-w-md text-center">
+          <CardHeader>
+            <CardTitle>
+              {authConfigured
+                ? "Sign in to see your trips"
+                : "Finish setup to start planning"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 text-slate-600">
+            <p>
+              {authConfigured
+                ? "Your itinerary, saved destinations, and optimized routes are tied to your account."
+                : "Copy .env.example to .env.local, add the database and GitHub OAuth values, then restart the app."}
+            </p>
+            {authConfigured && (
+              <AuthButton
+                isLoggedIn={false}
+                className="inline-flex h-10 items-center justify-center rounded-md bg-slate-900 px-5 text-sm font-medium text-white transition-colors hover:bg-slate-800"
+              >
+                Sign in with GitHub
+              </AuthButton>
+            )}
+          </CardContent>
+        </Card>
+      </main>
+    );
+  }
 
   const trips = await prisma.trip.findMany({
-    where: { userId: session?.user?.id },
+    where: { userId: session.user.id },
   });
 
   const sortedTrips = [...trips].sort(
@@ -26,15 +60,6 @@ export default async function TripsPage() {
   const upcomingTrips = sortedTrips.filter(
     (trip) => new Date(trip.startDate) >= today
   );
-
-  if (!session) {
-    return (
-      <div className="flex justify-center items-center h-screen text-gray-700 text-xl">
-        {" "}
-        Please Sign In.
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6 container mx-auto px-4 py-8">
@@ -82,8 +107,8 @@ export default async function TripsPage() {
           </Card>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {sortedTrips.slice(0, 6).map((trip, key) => (
-              <Link key={key} href={`/trips/${trip.id}`}>
+            {sortedTrips.slice(0, 6).map((trip) => (
+              <Link key={trip.id} href={`/trips/${trip.id}`}>
                 <Card className="h-full hover:shadow-md transition-shadow">
                   <CardHeader>
                     <CardTitle className="line-clamp-1">{trip.title}</CardTitle>
@@ -95,8 +120,8 @@ export default async function TripsPage() {
                     </p>
                     <div className="text-sm">
                       {" "}
-                      {new Date(trip.startDate).toLocaleDateString()} -{" "}
-                      {new Date(trip.endDate).toLocaleDateString()}
+                      {formatTripDate(trip.startDate)} -{" "}
+                      {formatTripDate(trip.endDate)}
                     </div>
                   </CardContent>
                 </Card>

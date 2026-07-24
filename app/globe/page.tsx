@@ -1,8 +1,17 @@
 "use client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MapPin } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import Globe, { GlobeMethods } from "react-globe.gl";
+import dynamic from "next/dynamic";
+import { useEffect, useState } from "react";
+
+const Globe = dynamic(() => import("react-globe.gl"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full items-center justify-center">
+      <div className="h-12 w-12 animate-spin rounded-full border-4 border-slate-200 border-b-teal-600" />
+    </div>
+  ),
+});
 
 export interface TransformedLocation {
   lat: number;
@@ -12,18 +21,21 @@ export interface TransformedLocation {
 }
 
 export default function GlobePage() {
-  const globeRef = useRef<GlobeMethods | undefined>(undefined);
-
   const [visitedCountries, setVisitedCountries] = useState<Set<string>>(
     new Set()
   );
   const [locations, setLocations] = useState<TransformedLocation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchLocations = async () => {
       try {
         const response = await fetch("/api/trips");
+        if (!response.ok) {
+          throw new Error("Unable to load travel history");
+        }
+
         const data = await response.json();
         setLocations(data);
         const countries = new Set<string>(
@@ -31,8 +43,10 @@ export default function GlobePage() {
         );
 
         setVisitedCountries(countries);
-      } catch (err) {
-        console.error("error", err);
+      } catch {
+        setError(
+          "Your travel history could not be loaded. Check your sign-in and map configuration."
+        );
       } finally {
         setIsLoading(false);
       }
@@ -41,12 +55,6 @@ export default function GlobePage() {
     fetchLocations();
   }, []);
 
-  useEffect(() => {
-    if (globeRef.current) {
-      globeRef.current.controls().autoRotate = true;
-      globeRef.current.controls().autoRotateSpeed = 0.5;
-    }
-  }, []);
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
       {" "}
@@ -58,15 +66,19 @@ export default function GlobePage() {
           </h1>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-            <div className="lg:col-span-2 bg-white ronded-xl shadow-lg overflow-hidden">
+            <div className="overflow-hidden rounded-xl bg-white shadow-lg lg:col-span-2">
               <div className="p-6">
                 <h2 className="text-2xl font-semibold mb-4">
                   {" "}
-                  See where you've been...
+                  See where you&apos;ve been...
                 </h2>
 
                 <div className="h-[600px] w-full relative">
-                  {isLoading ? (
+                  {error ? (
+                    <div className="flex h-full items-center justify-center p-8 text-center text-sm text-red-700">
+                      {error}
+                    </div>
+                  ) : isLoading ? (
                     <div className="flex items-center justify-center h-full">
                       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900">
                         {" "}
@@ -74,7 +86,6 @@ export default function GlobePage() {
                     </div>
                   ) : (
                     <Globe
-                      ref={globeRef}
                       globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
                       bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
                       backgroundColor="rgba(0,0,0,0)"
@@ -110,7 +121,7 @@ export default function GlobePage() {
                       <div className="bg-blue-50 p-4 rounded-lg">
                         <p className="text-sm text-blue-800">
                           {" "}
-                          You've visited{" "}
+                          You&apos;ve visited{" "}
                           <span className="font-bold">
                             {" "}
                             {visitedCountries.size}
@@ -125,7 +136,7 @@ export default function GlobePage() {
                           .map((country, key) => (
                             <div
                               key={key}
-                              className="flex items-center gap-2 p-3 rounded-lg hover: bg-gray-50 transition-colors border border-gray-100"
+                              className="flex items-center gap-2 rounded-lg border border-gray-100 p-3 transition-colors hover:bg-gray-50"
                             >
                               <MapPin className="h-4 w-4 text-red-500" />
                               <span className="font-medium"> {country}</span>

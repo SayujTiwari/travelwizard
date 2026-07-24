@@ -10,8 +10,8 @@ export async function createTrip(formData: FormData) {
     throw new Error("Not authenticated.");
   }
 
-  const title = formData.get("title")?.toString();
-  const description = formData.get("description")?.toString();
+  const title = formData.get("title")?.toString().trim();
+  const description = formData.get("description")?.toString().trim();
   const imageUrl = formData.get("imageUrl")?.toString();
   const startDateStr = formData.get("startDate")?.toString();
   const endDateStr = formData.get("endDate")?.toString();
@@ -22,6 +22,21 @@ export async function createTrip(formData: FormData) {
 
   const startDate = new Date(startDateStr);
   const endDate = new Date(endDateStr);
+
+  if (
+    Number.isNaN(startDate.getTime()) ||
+    Number.isNaN(endDate.getTime())
+  ) {
+    throw new Error("Enter valid trip dates.");
+  }
+
+  if (endDate < startDate) {
+    throw new Error("The end date must be on or after the start date.");
+  }
+
+  if (title.length > 100 || description.length > 2000) {
+    throw new Error("The trip title or description is too long.");
+  }
 
   await prisma.trip.create({
     data: {

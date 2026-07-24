@@ -1,10 +1,10 @@
+import NewLocationClient from "@/components/new-location";
 import { auth } from "@/auth";
-import TripDetailClient from "@/components/trip-detail";
 import { prisma } from "@/lib/prisma";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { isAuthConfigured } from "@/lib/config";
 
-export default async function TripDetail({
+export default async function NewLocation({
   params,
 }: {
   params: Promise<{ tripId: string }>;
@@ -23,12 +23,12 @@ export default async function TripDetail({
 
   const trip = await prisma.trip.findFirst({
     where: { id: tripId, userId: session.user.id },
-    include: { locations: { orderBy: { order: "asc" } } },
+    select: { id: true, title: true },
   });
 
   if (!trip) {
-    return <div> Trip not found.</div>;
+    notFound();
   }
 
-  return <TripDetailClient trip={trip} />;
+  return <NewLocationClient tripId={tripId} tripTitle={trip.title} />;
 }
